@@ -59,8 +59,8 @@ impl<'a> From<(&'a mut [u8], &str)> for CBfr<'a> {
         match validate_cap(value.0.len(), 0, value.1.len()) {
             Ok(()) => {
                 let s = Self { bfr: value.0, len: value.1.len() };
-                for (i, c) in value.1.chars().enumerate() {
-                    s.bfr[i] = c as u8
+                for (i, c) in value.1.bytes().enumerate() {
+                    s.bfr[i] = c
                 }
                 return s;
             }
@@ -267,8 +267,8 @@ impl<'a> CBfr<'a> {
     pub fn append_str(&mut self, text: &str) {
         match validate_cap(self.bfr.len(), self.len, text.len()) {
             Ok(()) => {
-                for (i, c) in text.chars().enumerate() {
-                    self.bfr[self.len+i] = c as u8
+                for (i, c) in text.bytes().enumerate() {
+                    self.bfr[self.len+i] = c
                 }
                 self.len += text.len();
             }
@@ -416,8 +416,8 @@ impl<'a> CBfr<'a> {
     /// ```
     pub fn prepend_str(&mut self, text: &str) {
         self.rshift(0, text.len(), '#');
-        for (i, c) in text.chars().enumerate() {
-            self.bfr[i] = c as u8
+        for (i, c) in text.bytes().enumerate() {
+            self.bfr[i] = c
         }
     }
 
@@ -559,18 +559,315 @@ impl<'a> CBfr<'a> {
                         self.bfr[at] = c as u8;
                     },
                     Err(e) => panic!("{}", e)
-
                 }
             }
             Err(e) => panic!("{}", e)
         }
     }
 
+    /// Insert &str at position
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 20];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// b.append_str("I and you");
+    /// b.take(2, 3);
+    /// assert_eq!("I  you", b.to_string());
+    /// assert_eq!(6, b.len());
+    /// 
+    /// b.insert_str(2, "love");
+    /// assert_eq!("I love you", b.to_string());
+    /// assert_eq!(10, b.len());
+    /// 
+    /// ```
+    /// # Panic
+    /// Panic if:
+    ///     1. Current buffer is full already, or
+    ///     2. at > length 
+    /// 
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer1 = [0; 7];    // buffer capacity is 7
+    /// let mut b = CBfr::new(&mut buffer1);
+    /// b.append_str("Amazing");
+    /// assert_eq!(true, b.is_full());  // buffer is full
+    /// // b.insert_str(0, "The ");            // can not insert, buffer is full
+    /// 
+    /// let mut buffer2 = [0; 256];
+    /// let mut c = CBfr::new(&mut buffer2);
+    /// c.append_str("abc");
+    /// // c.insert_str(4, "def");  // will panic
+    /// c.insert_str(3, "def");
+    /// assert_eq!(6, c.len());
+    /// assert_eq!("abcdef", c.to_string());
+    /// ```
     pub fn insert_str(&mut self, at: usize, text: &str) {
-        todo!()
+        match validate_cap(self.bfr.len(), self.len, text.len()) {
+            Ok(()) => {
+                match validate_len(self.len+1, at) {
+                    Ok(()) => {
+                        for (i, c) in text.bytes().enumerate() {
+                            self.rshift(at+i, 1, '#');
+                            self.bfr[at+i] = c;
+                        }
+                    },
+                    Err(e) => panic!("{}", e)
+                }
+            }
+            Err(e) => panic!("{}", e)
+        }
     }
 
+    /// Insert &str at position
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer1 = [0; 256];
+    /// let mut b1 = CBfr::new(&mut buffer1);
+    /// 
+    /// let mut buffer2 = [0; 20];
+    /// let mut b2 = CBfr::new(&mut buffer2);
+    /// 
+    /// b1.append_str("I  you");
+    /// b2.append_str("love");
+    /// 
+    /// b1.insert(2, b2);
+    /// assert_eq!("I love you", b1.to_string());
+    /// assert_eq!(10, b1.len());
+    /// 
+    /// ```
+    /// # Panic
+    /// Panic if:
+    ///     1. Current buffer is full already, or
+    ///     2. at > length 
+    /// 
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer1 = [0; 8];    // buffer capacity is 7
+    /// let mut b1 = CBfr::new(&mut buffer1);
+    /// 
+    /// let mut buffer2 = [0; 256];
+    /// let mut b2 = CBfr::new(&mut buffer2);
+    /// 
+    /// b1.append_str("Amazing ");
+    /// assert_eq!(true, b1.is_full());     // b1 is now full
+    /// b2.append_str("Spiderman");
+    /// //b1.append(b2);    // can not add more. Will panic
+    /// //assert_eq!("Amazing Spiderman", b1.to_string());
+    /// //assert_eq!(17, b1.len());
+    /// ```
+    /// 
+    /// # Other Panic Example
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer1 = [0; 256];    // buffer capacity is 7
+    /// let mut b1 = CBfr::new(&mut buffer1);
+    /// 
+    /// let mut buffer2 = [0; 256];
+    /// let mut b2 = CBfr::new(&mut buffer2);
+    /// 
+    /// b1.append_str("Amazing ");
+    /// b2.append_str("Spiderman");
+    /// assert_eq!(8, b1.len());    // len is 8
+    /// //b1.insert(9, b2);         // will panic. Len is 8 but try to insert at 9
+    /// //assert_eq!("Amazing Spiderman", b1.to_string());
+    /// //assert_eq!(17, b1.len());
+    /// ```
     pub fn insert(&mut self, at: usize, other: Self) {
-        todo!()
+        match validate_cap(self.bfr.len(), self.len, other.len()) {
+            Ok(()) => {
+                match validate_len(self.len+1, at) {
+                    Ok(()) => {
+                        for i in 0..other.len {
+                            self.rshift(at+i, 1, '#');
+                            self.bfr[at+i] = other.bfr[i]
+                        }
+                    },
+                    Err(e) => panic!("{}", e)
+                }
+            }
+            Err(e) => panic!("{}", e)
+        }
+    }
+
+    /// Reverse item
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("Abcdef");
+    /// b.reverse();
+    /// 
+    /// assert_eq!("fedcbA", b.to_string());
+    /// ```
+    pub fn reverse(&mut self) {
+        let mid = self.len/2;
+        let mut idx = (0usize, self.len-1);
+        while idx.0 < mid {
+            let temp = self.bfr[idx.0];
+            self.bfr[idx.0] = self.bfr[idx.1];
+            self.bfr[idx.1] = temp;
+            idx.0 += 1;
+            idx.1 -= 1;
+        }
+    }
+
+    /// Sort item ascending using linear search algorithm
+    /// This operation takes O(n) time complexity
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("efAdcb");
+    /// b.sort();
+    /// 
+    /// assert_eq!("Abcdef", b.to_string());
+    /// ```
+    pub fn sort(&mut self) {
+        let mut sorted = false;
+        while !sorted {
+            sorted = true;
+            for i in 0..(self.len-1) {
+                if self.bfr[i+1] < self.bfr[i] {
+                    let temp = self.bfr[i];
+                    self.bfr[i] = self.bfr[i+1];
+                    self.bfr[i+1] = temp;
+                    sorted = false;
+                }
+            }
+        }
+    }
+
+    /// Sort item descending using linear search algorithm
+    /// This operation takes O(n) time complexity
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("efAdcb");
+    /// b.sort_desc();
+    /// 
+    /// assert_eq!("fedcbA", b.to_string());
+    /// ```
+    pub fn sort_desc(&mut self) {
+        let mut sorted = false;
+        while !sorted {
+            sorted = true;
+            for i in 0..(self.len-1) {
+                if self.bfr[i+1] > self.bfr[i] {
+                    let temp = self.bfr[i];
+                    self.bfr[i] = self.bfr[i+1];
+                    self.bfr[i+1] = temp;
+                    sorted = false;
+                }
+            }
+        }
+    }
+
+    /// Remove space on the left
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("  Hello");
+    /// b.ltrim();
+    /// 
+    /// assert_eq!("Hello", b.to_string());
+    /// assert_eq!(5, b.len());
+    /// ```
+    pub fn ltrim(&mut self) {
+        if self.len > 1 {
+            let mut c = self.bfr[0];
+            let mut idx = self.len;
+            while c == 32 && idx > 1 {
+                self.lshift(0, 1);
+                c = self.bfr[0];
+                idx -= 1;
+            }
+        }
+    }
+
+    /// Remove space on the right
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("Hello  ");
+    /// b.rtrim();
+    /// 
+    /// assert_eq!("Hello", b.to_string());
+    /// assert_eq!(5, b.len());
+    /// ```
+    pub fn rtrim(&mut self) {
+        if self.len > 1 {
+            let mut last = self.bfr[self.len-1];
+            while last == 32 {
+                self.bfr[self.len-1] = 0;
+                self.len -= 1;
+                last = self.bfr[self.len-1];
+            }
+        }
+    }
+
+    /// Remove space on the right and left
+    /// This function is actually calling self.ltrim() and self.rtrim()
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str("  Hello  ");
+    /// b.trim();
+    /// 
+    /// assert_eq!("Hello", b.to_string());
+    /// assert_eq!(5, b.len());
+    /// ```
+    pub fn trim(&mut self) {
+        self.ltrim();
+        self.rtrim();
+    }
+
+    /// Trim all spaces
+    /// Takes O(n) time complexity
+    /// # Example:
+    /// ```
+    /// use cbfr::CBfr;
+    /// let mut buffer = [0; 256];
+    /// let mut b = CBfr::new(&mut buffer);
+    /// 
+    /// b.append_str(" Hello   World ");
+    /// b.trimall();
+    /// 
+    /// assert_eq!("Hello World", b.to_string());
+    /// assert_eq!(11, b.len());
+    /// ```
+    pub fn trimall(&mut self) {
+        self.ltrim();
+        self.rtrim();
+
+        if self.len > 1 {
+            let mut last = self.bfr[0];
+            for i in 1..self.len {
+                if last == 32 {
+                    if self.bfr[i-1] == 32 {
+                        self.lshift(i-1, 1)
+                    }
+                }
+                if i+1 == self.len { break; }
+                last = self.bfr[i]
+            }
+        }
     }
 }
