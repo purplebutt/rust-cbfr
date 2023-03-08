@@ -1,15 +1,27 @@
-use cbfr::CBfr;
+pub mod core;
+pub mod helper;
 
+
+use crate::core::b125::B125;
 
 fn main() {
-    let mut bfr = [0; 256];
-    let txt = "Abc";
+    let mut b: B125 = "Nice".into();
+    let mut c: B125 = "Nice".into();
 
-    let mut cbfr: CBfr = (&mut bfr[..], txt).into();
 
-    println!("{}", cbfr);
-    println!("{}", cbfr.len());
-    cbfr.insert_str(3, "def");
-    println!("{}", cbfr);
-    println!("{}", cbfr.len());
+    if b == c {
+        println!("Its ==")
+    }
+    else{
+        println!("Not ==")
+    }
+
+    let x = b.checksum() + c.checksum();
+    //println!("b.min(c) : {}", b.min(c));
+    //println!("b+c: {}", b + c);
+
+    for i in b.iter() {
+        println!("-> {}", *i as char)
+    }
+
 }
