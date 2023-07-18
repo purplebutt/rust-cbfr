@@ -1,4 +1,3 @@
-use std::mem;
 use crate::helper::error_text as errtxt;
 
 /// helper function for Display trait implementation
@@ -17,6 +16,16 @@ pub fn from(value: &str, arr: &mut [u8]) {
         for (i, &v) in value.as_bytes().iter().enumerate() {
             arr[i] = v
         };
+    }
+    else {
+        panic!("{}", errtxt::not_enough_capacity(arr.len(), value.len()))
+    }
+} 
+pub fn from_slice(value: &[u8], arr: &mut [u8]) {
+    if value.len() <= arr.len() {
+        for (i, &v) in value.iter().enumerate() {
+            arr[i] = v;
+        }
     }
     else {
         panic!("{}", errtxt::not_enough_capacity(arr.len(), value.len()))

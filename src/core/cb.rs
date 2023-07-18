@@ -1,7 +1,6 @@
-use std::panic::RefUnwindSafe;
-use std::{mem, result};
+use std::mem;
 use std::fmt::Display;
-use std::ops::{Add, Sub, Mul, Div, Deref};
+use std::ops::{Add, Sub, Mul, Div};
 
 
 use crate::core::helper as helper;
@@ -16,14 +15,16 @@ use crate::helper::error_text as errtxt;
 /// let b = BFRDYN::<256>::from("some string");
 /// assert_eq!(b.to_string(), "some string");
 /// ```
-pub struct BFRDYN<const CAPACITY: usize> {
+pub struct BFRDYN<const CAPACITY: usize = 256> {
     arr: [u8; CAPACITY],
     len: usize
 }
 
 // Display Trait
 impl<const CAPACITY: usize> Display for BFRDYN<CAPACITY> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { helper::fmt(&self.len, &self.arr, f) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
+        helper::fmt(&self.len, &self.arr, f) 
+    }
 }
 
 /// Create buffer instance from &str
@@ -42,6 +43,29 @@ impl<const CAPACITY: usize> From<&str> for BFRDYN<CAPACITY> {
         helper::from(value, &mut arr);
         Self { arr, len: value.len() }
     } 
+}
+
+/// Create buffer instance from &str
+/// # example
+/// ```
+/// use cbfr::core::cb::BFRDYN;
+/// let a: BFRDYN<125> = "wow amazing".into();
+/// let partial = a.get_slice(0, 3);
+/// let mut b: BFRDYN<125> = partial.into();
+///
+/// assert_eq!("wow", b.to_string());
+///
+/// ```
+/// # panic
+/// Panic if "some string" len > 256
+///
+impl<const CAPACITY: usize> From<&[u8]> for BFRDYN<CAPACITY> {
+    fn from(value: &[u8]) -> Self {
+        let mut me = Self::new();
+        helper::from_slice(value, &mut me.arr);
+        me.len = value.len();
+        me
+    }
 }
 
 /// clone trait
@@ -740,5 +764,148 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         }
     }
 
+    /// get slice
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I love you so much".into();
+    /// let partial = b.get_slice(2,6);
+    /// assert_eq!('l', partial[0] as char);
+    /// assert_eq!('o', partial[1] as char);
+    /// assert_eq!('v', partial[2] as char);
+    /// assert_eq!('e', partial[3] as char);
+    /// ```
+    ///
+    pub fn get_slice(&self, start: usize, end: usize) -> &[u8] {
+        &self.arr[start..end]
+    }
+
+    /// split by char and return Vec<String>
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I,love,you".into();
+    /// let mut words: Vec<String> = b.to_vec(',');
+    ///
+    /// assert_eq!("you", words.pop().unwrap());
+    /// assert_eq!("love", words.pop().unwrap());
+    /// assert_eq!("I", words.pop().unwrap());
+    /// ```
+    ///
+    pub fn to_vec(&self, c: char) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        let mut end: usize = 0;
+        for i in self.arr {
+            end += 1;
+            if i == c as u8 {
+                let x = &self.arr[start..end-1];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = end;
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
+
+    /// split by &str and return Vec<String>
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I,,will,always,,remember,you".into();
+    /// let mut words: Vec<String> = b.to_vec2(",,");
+    ///
+    /// assert_eq!("remember,you", words.pop().unwrap());
+    /// assert_eq!("will,always", words.pop().unwrap());
+    /// assert_eq!("I", words.pop().unwrap());
+    /// ```
+    ///
+    pub fn to_vec2(&self, s: &str) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        for (i, _) in self.arr.iter().enumerate() {
+            if i + s.len() > self.len { break; }
+            if self.arr[i..i+s.len()] == s.as_bytes()[..] {
+                let x = &self.arr[start..i];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = i+s.len();
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
+
+    /// split by &str and skip if next char equal to nxt
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = r#""id":"123","model": "davinci""#.into();
+    /// let mut parsed = b.to_vecx("\",", '#');
+    ///
+    /// assert_eq!(r#""model": "davinci""#, parsed.pop().unwrap());
+    /// assert_eq!(r#""id":"123"#, parsed.pop().unwrap());
+    ///
+    /// ```
+    ///
+    pub fn to_vecx(&self, s: &str, nxt: char) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        for (i, _) in self.arr.iter().enumerate() {
+            if i + s.len() > self.len { break; }
+            let end = i+s.len();
+            if (self.arr[i..end] == s.as_bytes()[..]) && self.arr[end..end+1][0] != nxt as u8 {
+                let x = &self.arr[start..i];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = i+s.len();
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
+
+    /// split by &str (plus left right char) and return Vec<String>
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = r#""id":"123","name":"Bill""#.into();
+    /// let mut words: Vec<String> = b.to_veclr(',', '"', '"');
+    ///
+    /// assert_eq!(r#""name":"Bill""#, words.pop().unwrap());
+    /// assert_eq!(r#""id":"123""#, words.pop().unwrap());
+    /// ```
+    ///
+    pub fn to_veclr(&self, c: char, lchar: char, rchar: char) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        for (i, _) in self.arr.iter().enumerate() {
+            if i == 1 { continue; }
+            if i+1 > self.len { break; }
+            let end = i+1;
+            if self.arr[i..end][0] == c as u8 && (self.arr[end-2..end-1][0] == lchar as u8) && (self.arr[end..end+1][0] == rchar as u8) {
+                let x = &self.arr[start..i];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = i+1;
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
 }
 

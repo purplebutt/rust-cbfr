@@ -26,7 +26,7 @@ fn main() {
     //}
 
 
-    let mut y: BFRDYN<256> = "Hello".into();
+    let mut y: BFRDYN = "Hello".into();
     y.append_ch('a').unwrap();
     y.append_ch('b').unwrap();
     y.append_ch('c').unwrap();
