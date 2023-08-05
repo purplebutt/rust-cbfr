@@ -2,20 +2,47 @@ use std::mem;
 use std::fmt::Display;
 use std::ops::{Add, Sub, Mul, Div};
 
-
 use crate::core::helper as helper;
-use crate::helper::error_text as errtxt;
+use crate::core::errors as err;
+
+pub type NecResult = Result<(), err::NotEnoughCapacity>;
+pub type IidxResult = Result<(), err::InvalidIndex>;
+
+/// BFRDYN default capacity
+/// # To create an instance with default capacity
+/// ```
+/// use cbfr::core::cb::BFRDYN;
+///
+/// let b1: BFRDYN = "another string".into();       // create a buffer with default capacity (256)
+/// let mut b2: BFRDYN = BFRDYN::def();             // create a buffer with default capacity (256)
+/// 
+/// b2.append_str("also another string");
+/// 
+/// assert_eq!("another string", b1.to_string());
+/// assert_eq!("also another string", b2.to_string());
+/// ```
+/// 
+pub const DEFCAPACITY: usize = 256;
 
 
-/// buffer
+/// BFRDYN is a buffer data type focusing on performance and speed
+/// It's primary usage to manipulate short text data. Built on top of Rust array, 
+/// BFRDYN store data on the heap, as a consequences you should explicitly provide the size of the buffer.
+/// By default BFRDYN has capacity of 256, but you can modify it according to your need.
 /// # example:
 /// ```
 /// use cbfr::core::cb::BFRDYN;
 ///
-/// let b = BFRDYN::<256>::from("some string");
-/// assert_eq!(b.to_string(), "some string");
+/// let b1 = BFRDYN::<125>::from("some string");    // create a buffer with capacity = 125
+/// let b2: BFRDYN = "another string".into();       // create a buffer with default capacity (256)
+/// let mut b3: BFRDYN = BFRDYN::def();       // create a buffer with default capacity (256)
+/// 
+/// b3.append_str("more string");
+/// assert_eq!(b1.to_string(), "some string");
+/// assert_eq!(b2.to_string(), "another string");
+/// assert_eq!(b3.to_string(), "more string");
 /// ```
-pub struct BFRDYN<const CAPACITY: usize = 256> {
+pub struct BFRDYN<const CAPACITY: usize = DEFCAPACITY> {
     arr: [u8; CAPACITY],
     len: usize
 }
@@ -50,7 +77,7 @@ impl<const CAPACITY: usize> From<&str> for BFRDYN<CAPACITY> {
 /// ```
 /// use cbfr::core::cb::BFRDYN;
 /// let a: BFRDYN<125> = "wow amazing".into();
-/// let partial = a.get_slice(0, 3);
+/// let partial = a.get_slice(0, 3).unwrap();
 /// let mut b: BFRDYN<125> = partial.into();
 ///
 /// assert_eq!("wow", b.to_string());
@@ -203,6 +230,17 @@ impl<const CAPACITY: usize> Div for BFRDYN<CAPACITY> {
 //     } 
 // }
 
+
+impl BFRDYN {
+    ///
+    /// Create instance with default capacity (default capacity is 256)
+    /// 
+    pub fn def() -> Self {
+        Self { arr: [0u8; DEFCAPACITY], len: 0 }
+    }
+}
+
+
 // non trait implementations
 impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// create new buffer with generic constant capacity
@@ -336,14 +374,13 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(13, a.len());
     /// ```
     ///
-    pub fn prepend(&mut self, mut other: Self) -> Result<(), String> {
+    pub fn prepend(&mut self, mut other: Self) -> NecResult {
         let total_len = self.len + other.len;
         if total_len <= self.capacity() {
             self.prepend_unchecked(&mut other);
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
 
@@ -360,15 +397,14 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(13, b.len());
     /// ```
     ///
-    pub fn prepend_str(&mut self, text: &str) -> Result<(), String> {
+    pub fn prepend_str(&mut self, text: &str) -> NecResult {
         let total_len = self.len + text.len();
         if total_len <= self.capacity() {
             let mut other: Self = text.into();
             self.prepend_unchecked(&mut other);
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
 
@@ -384,7 +420,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(13, a.len());
     /// ```
     ///
-    pub fn append(&mut self, other: Self) -> Result<(), String> {
+    pub fn append(&mut self, other: Self) -> NecResult {
         let total_len = self.len + other.len;
         if total_len <= self.capacity() {
             for i in 0..(other.len) {
@@ -392,9 +428,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             }
             self.len += other.len;
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
 
@@ -410,7 +445,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(13, b.len());
     /// ```
     ///
-    pub fn append_str(&mut self, text: &str) -> Result<(), String> {
+    pub fn append_str(&mut self, text: &str) -> NecResult {
         let total_len = self.len + text.len();
         if total_len <= self.capacity() {
             for i in 0..text.len() {
@@ -418,9 +453,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             }
             self.len += text.len();
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
 
@@ -435,7 +469,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(13, b.len());
     /// ```
     ///
-    pub fn append_ch(&mut self, c: char) -> Result<(), String> {
+    pub fn append_ch(&mut self, c: char) -> NecResult {
         let total_len = self.len + c.len_utf8();
         if total_len <= self.capacity() {
             for i in 0..c.len_utf8() {
@@ -443,9 +477,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             }
             self.len += c.len_utf8();
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
 
@@ -460,7 +493,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(8, b.len());
     /// ```
     ///
-    pub fn rshift(&mut self, pos: usize) -> Result<(), String> {
+    pub fn rshift(&mut self, pos: usize) -> IidxResult {
         if pos < self.len && self.len < self.capacity() {
             let mut idx = self.len;
             while idx > pos {
@@ -469,9 +502,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             }
             self.len += 1;
             Ok(())
-        }
-        else {
-            Err(errtxt::not_valid_index(self.len, pos))
+        } else {
+            Err(err::InvalidIndex::throw(self.len, pos))
         }
     }
     
@@ -486,7 +518,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(6, b.len());
     /// ```
     ///
-    pub fn lshift(&mut self, pos: usize) -> Result<(), String> {
+    pub fn lshift(&mut self, pos: usize) -> IidxResult {
         if pos < self.len {
             for i in pos..self.len {
                 self.arr[i] = self.arr[i+1]
@@ -494,9 +526,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             self.arr[self.len] = 0u8;
             self.len -= 1;
             Ok(())
-        }
-        else {
-            Err(errtxt::not_valid_index(self.len, pos))
+        } else {
+            Err(err::InvalidIndex::throw(self.len, pos))
         }
     }
 
@@ -531,7 +562,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(7, a.len());
     /// ```
     ///
-    pub fn insert(&mut self, other: Self, pos: usize) -> Result<(), String> {
+    pub fn insert(&mut self, other: Self, pos: usize) -> NecResult {
         let total_len = self.len + other.len;
         if total_len <= self.capacity() && pos < self.len {
             let mut idx = pos;
@@ -541,9 +572,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
                 idx += 1;
             }
             Ok(())
-        }
-        else {
-            Err(errtxt::not_enough_capacity(self.capacity(), total_len))
+        } else {
+            Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
         }
     }
     
@@ -557,14 +587,14 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!(7, b.len());
     /// ```
     ///
-    pub fn insert_ch(&mut self, c: char, pos: usize) -> Result<(), String> {
+    pub fn insert_ch(&mut self, c: char, pos: usize) -> NecResult {
         if self.len < self.capacity() {
             self.rshift(pos)?;
             self.arr[pos] = c as u8;
             Ok(())
         }
         else {
-            Err(errtxt::not_enough_capacity(self.capacity(), self.len+1))
+            Err(err::NotEnoughCapacity::throw(self.capacity(), self.len+1))
         }
     }
 
@@ -591,6 +621,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     }
 
     /// sort items in buffer
+    /// this method use linear sort algorithm with O(n * n) time complexity
     /// # example
     /// ```
     /// use cbfr::core::cb::BFRDYN;
@@ -698,11 +729,20 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// ```
     ///
     pub fn lower(&mut self) {
-        for c in self.arr.iter_mut() {
+        // TODO: looping only from 0 to self. len
+        for (i, c) in self.arr.iter_mut().enumerate() {
+            if i > (self.len-1) { break; }
             if *c <= 90 && *c >= 65 {
                 *c = *c + 32;
             }
         }
+
+        // Old code
+        // for c in self.arr.iter_mut() {
+        //     if *c <= 90 && *c >= 65 {
+        //         *c = *c + 32;
+        //     }
+        // }
     }
 
     /// convert to uppercase
@@ -716,11 +756,20 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// ```
     ///
     pub fn upper(&mut self) {
-        for c in self.arr.iter_mut() {
+        // TODO: looping only from 0 to self. len
+        for (i, c) in self.arr.iter_mut().enumerate() {
+            if i > (self.len-1) { break; }
             if *c >= 97 && *c <= 122 {
                 *c = *c - 32;
             }
         }
+
+        // Old code
+        // for c in self.arr.iter_mut() {
+        //     if *c >= 97 && *c <= 122 {
+        //         *c = *c - 32;
+        //     }
+        // }
     }
 
     /// to title
@@ -764,24 +813,111 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         }
     }
 
-    /// get slice
+    /// get slice without checking if 'start' and 'end' is a valid index
+    /// this function may return unexpected result if the start or
+    /// end value lies beyond valid index
     /// # example
     /// ```
     /// use cbfr::core::cb::BFRDYN;
     ///
     /// let b: BFRDYN<256> = "I love you so much".into();
-    /// let partial = b.get_slice(2,6);
+    /// let partial = b.get_slice_unchecked(2,6);
     /// assert_eq!('l', partial[0] as char);
     /// assert_eq!('o', partial[1] as char);
     /// assert_eq!('v', partial[2] as char);
     /// assert_eq!('e', partial[3] as char);
     /// ```
     ///
-    pub fn get_slice(&self, start: usize, end: usize) -> &[u8] {
+    pub fn get_slice_unchecked(&self, start: usize, end: usize) -> &[u8] {
         &self.arr[start..end]
     }
 
-    /// split by char and return Vec<String>
+    /// get slice
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I love you so much".into();
+    /// let partial = b.get_slice(2,6).unwrap();
+    /// assert_eq!('l', partial[0] as char);
+    /// assert_eq!('o', partial[1] as char);
+    /// assert_eq!('v', partial[2] as char);
+    /// assert_eq!('e', partial[3] as char);
+    /// ```
+    ///
+    pub fn get_slice(&self, start: usize, end: usize) -> Result<&[u8], err::InvalidIndex> {
+        if start >= (self.len-1) || end > (self.len) || start > end {
+            Err(err::InvalidIndex::throw(start, end))
+        } else {
+            Ok(&self.arr[start..end])
+        }
+    }
+
+    /// split by char and return Vec<String>, include char criteria to next item
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I, love, you".into();
+    /// let mut words: Vec<String> = b.to_vecir(',');
+    ///
+    /// assert_eq!(", you", words.pop().unwrap());
+    /// assert_eq!(", love", words.pop().unwrap());
+    /// assert_eq!("I", words.pop().unwrap());
+    /// ```
+    ///
+    pub fn to_vecir(&self, c: char) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        let mut end: usize = 0;
+        for i in self.arr {
+            end += 1;
+            if i == c as u8 {
+                let x = &self.arr[start..end-1];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = end-1;
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
+
+    /// split by char and return Vec<String>, include char criteria to current item
+    /// # example
+    /// ```
+    /// use cbfr::core::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "I, love, you".into();
+    /// let mut words: Vec<String> = b.to_vecil(',');
+    ///
+    /// assert_eq!(" you", words.pop().unwrap());
+    /// assert_eq!(" love,", words.pop().unwrap());
+    /// assert_eq!("I,", words.pop().unwrap());
+    /// ```
+    ///
+    pub fn to_vecil(&self, c: char) -> Vec<String> {
+        let mut v = Vec::<String>::new();
+        let mut start: usize = 0;
+        let mut end: usize = 0;
+        for i in self.arr {
+            end += 1;
+            if i == c as u8 {
+                let x = &self.arr[start..end];
+                let bfr: BFRDYN<CAPACITY> = x.into();
+                v.push(bfr.to_string());
+                start = end;
+            }
+        }
+        let last = &self.arr[start..self.len];
+        let bfr: BFRDYN<CAPACITY> = last.into();
+        v.push(bfr.to_string());
+        v
+    }
+
+    /// split by char and return Vec<String>, exclude the char criteria
     /// # example
     /// ```
     /// use cbfr::core::cb::BFRDYN;
@@ -844,26 +980,26 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         v
     }
 
-    /// split by &str and skip if next char equal to nxt
+    /// split by &str and skip if next char equal to 'r'
     /// # example
     /// ```
     /// use cbfr::core::cb::BFRDYN;
     ///
     /// let b: BFRDYN<256> = r#""id":"123","model": "davinci""#.into();
-    /// let mut parsed = b.to_vecx("\",", '#');
+    /// let mut parsed = b.to_vecr("\",", '#');
     ///
     /// assert_eq!(r#""model": "davinci""#, parsed.pop().unwrap());
     /// assert_eq!(r#""id":"123"#, parsed.pop().unwrap());
     ///
     /// ```
     ///
-    pub fn to_vecx(&self, s: &str, nxt: char) -> Vec<String> {
+    pub fn to_vecr(&self, s: &str, r: char) -> Vec<String> {
         let mut v = Vec::<String>::new();
         let mut start: usize = 0;
         for (i, _) in self.arr.iter().enumerate() {
             if i + s.len() > self.len { break; }
             let end = i+s.len();
-            if (self.arr[i..end] == s.as_bytes()[..]) && self.arr[end..end+1][0] != nxt as u8 {
+            if (self.arr[i..end] == s.as_bytes()[..]) && self.arr[end..end+1][0] != r as u8 {
                 let x = &self.arr[start..i];
                 let bfr: BFRDYN<CAPACITY> = x.into();
                 v.push(bfr.to_string());

@@ -1,4 +1,5 @@
-use crate::helper::error_text as errtxt;
+use crate::core::errors::NotEnoughCapacity;
+
 
 /// helper function for Display trait implementation
 pub fn fmt(len: &usize, arr: &[u8], f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,9 +17,8 @@ pub fn from(value: &str, arr: &mut [u8]) {
         for (i, &v) in value.as_bytes().iter().enumerate() {
             arr[i] = v
         };
-    }
-    else {
-        panic!("{}", errtxt::not_enough_capacity(arr.len(), value.len()))
+    } else {
+        panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
     }
 } 
 pub fn from_slice(value: &[u8], arr: &mut [u8]) {
@@ -26,9 +26,8 @@ pub fn from_slice(value: &[u8], arr: &mut [u8]) {
         for (i, &v) in value.iter().enumerate() {
             arr[i] = v;
         }
-    }
-    else {
-        panic!("{}", errtxt::not_enough_capacity(arr.len(), value.len()))
+    } else {
+        panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
     }
 } 
 
@@ -36,8 +35,7 @@ pub fn from_slice(value: &[u8], arr: &mut [u8]) {
 pub fn eq(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     if lena != lenb {
         return false;
-    }
-    else {
+    } else {
         for (i, c) in arra.iter().enumerate() {
             if *c != arrb[i] {
                 return false;
@@ -49,8 +47,7 @@ pub fn eq(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
 pub fn ne(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     if lena != lenb {
         return true;
-    }
-    else {
+    } else {
         for (i, c) in arra.iter().enumerate() {
             if *c != arrb[i] {
                 return true;
@@ -65,7 +62,7 @@ pub fn append_ch_unchecked(len: &mut usize, arr: &mut [u8], c: char) {
     *len += 1;
 } 
 
-pub fn append_ch(len: &mut usize, arr: &mut [u8], c: char) -> Result<(), String> {
+pub fn append_ch(len: &mut usize, arr: &mut [u8], c: char) -> Result<(), NotEnoughCapacity> {
     let total_len = *len + c.len_utf8();
     if total_len < arr.len() {
         for i in 0..c.len_utf8() {
@@ -73,9 +70,8 @@ pub fn append_ch(len: &mut usize, arr: &mut [u8], c: char) -> Result<(), String>
         }
         *len += c.len_utf8();
         Ok(())
-    }
-    else {
-        Err(errtxt::not_enough_capacity(arr.len(), total_len))
+    } else {
+        Err(NotEnoughCapacity::throw(arr.len(), total_len))
     }
 }
 
@@ -86,5 +82,3 @@ pub fn checksum(arr: &[u8]) -> usize {
     }
     result
 }
-
-

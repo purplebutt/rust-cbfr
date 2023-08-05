@@ -1,11 +1,24 @@
 pub mod core;
-pub mod helper;
-
+//pub mod helper;
 
 // use crate::core::b125::B125;
 use crate::core::cb::BFRDYN;
 
+
 fn main() {
+    let mut b:BFRDYN = "this is just a test".into();
+
+    let mut b2: BFRDYN<125> = BFRDYN::new();
+
+    b2.append_str("text").unwrap(); println!("{}", b2);
+
+    b.reverse();
+
+    let v = b.to_vec(' ');
+
+    println!("{}", b);
+    println!("{:?}", v);
+
     // let b: B125 = "Nice".into();
     // let c: B125 = "Nice".into();
 
@@ -26,21 +39,20 @@ fn main() {
     //}
 
 
-    let mut y: BFRDYN = "Hello".into();
-    y.append_ch('a').unwrap();
-    y.append_ch('b').unwrap();
-    y.append_ch('c').unwrap();
-    y.append_ch('A').unwrap();
+    // let mut y: BFRDYN = "Hello".into();
+    // y.append_ch('a').unwrap();
+    // y.append_ch('b').unwrap();
+    // y.append_ch('c').unwrap();
+    // y.append_ch('A').unwrap();
     
-    let mut x: BFRDYN<512> = "World".into();
-    x.append_ch('3').unwrap();
-    x.append_ch('Z').unwrap();
-    x.append_ch('M').unwrap();
-    x.append_ch('u').unwrap();
+    // let mut x: BFRDYN<512> = "World".into();
+    // x.append_ch('3').unwrap();
+    // x.append_ch('Z').unwrap();
+    // x.append_ch('M').unwrap();
+    // x.append_ch('u').unwrap();
     
-    println!("x: {}\ty: {}", y, x);
-    y.upper();
-    x.reverse();
-    println!("x: {}\ty: {}", y, x);
+    // println!("x: {}\ty: {}", y, x);
+    // y.upper();
+    // x.reverse();
+    // println!("x: {}\ty: {}", y, x);
 }
-

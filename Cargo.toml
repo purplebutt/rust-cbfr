@@ -2,7 +2,9 @@
 name = "cbfr"
 version = "0.1.0"
 edition = "2021"
-author = "cheries nm"
+author = "Cheries Mewengkang"
+description = "A buffer that run on memory stack, focusing on performance and speed"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
