@@ -26,9 +26,9 @@ pub const DEFCAPACITY: usize = 256;
 
 
 /// BFRDYN is a buffer data type focusing on performance and speed
-/// It's primary usage to manipulate short text data. Built on top of Rust array, 
-/// BFRDYN store data on the heap, as a consequences you should explicitly provide the size of the buffer.
-/// By default BFRDYN has capacity of 256, but you can modify it according to your need.
+/// It's primary usage is to manipulate short text data. Built on top of Rust array, 
+/// BFRDYN store data on the stack, as a consequences it can only store small size data.
+/// You can explicitly provide the size of the buffer, but if you ignore it, by default BFRDYN has capacity of 256 * 8bit
 /// # example:
 /// ```
 /// use cbfr::core::cb::BFRDYN;
