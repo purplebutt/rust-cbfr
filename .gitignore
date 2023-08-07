@@ -1,2 +1,5 @@
 /target
 /Cargo.lock
+/src/.bak/*
+/src/main.rs
+.gitignore
