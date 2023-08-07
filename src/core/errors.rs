@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::error::Error;
 
-
+#[doc = "hidden"]
 #[derive(Debug, Default)]
 struct ErrorBase {
     buffer: usize,
@@ -10,7 +10,7 @@ struct ErrorBase {
     index: usize
 }
 
-// NotEnoughCapacity
+#[doc = "hidden"]
 #[derive(Debug)]
 pub struct NotEnoughCapacity(ErrorBase);
 impl Error for NotEnoughCapacity {}
@@ -28,7 +28,7 @@ impl NotEnoughCapacity {
     }
 }
 
-// InvalidIndex
+#[doc = "hidden"]
 #[derive(Debug)]
 pub struct InvalidIndex(ErrorBase);
 impl Error for InvalidIndex {}

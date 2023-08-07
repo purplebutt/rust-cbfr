@@ -2,6 +2,7 @@ use crate::core::errors::NotEnoughCapacity;
 
 
 /// helper function for Display trait implementation
+#[doc = "hidden"]
 pub fn fmt(len: &usize, arr: &[u8], f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     let contain_values = &arr[0..arr.len()];
     let text: &str;
@@ -12,6 +13,7 @@ pub fn fmt(len: &usize, arr: &[u8], f: &mut std::fmt::Formatter<'_>) -> std::fmt
 }
 
 /// helper function for From trait implementation
+#[doc = "hidden"]
 pub fn from(value: &str, arr: &mut [u8]) {
     if value.len() <= arr.len() {
         for (i, &v) in value.as_bytes().iter().enumerate() {
@@ -21,6 +23,8 @@ pub fn from(value: &str, arr: &mut [u8]) {
         panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
     }
 } 
+
+#[doc = "hidden"]
 pub fn from_slice(value: &[u8], arr: &mut [u8]) {
     if value.len() <= arr.len() {
         for (i, &v) in value.iter().enumerate() {
@@ -31,6 +35,7 @@ pub fn from_slice(value: &[u8], arr: &mut [u8]) {
     }
 } 
 
+#[doc = "hidden"]
 /// helper function for partialEQ trait implementation
 pub fn eq(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     if lena != lenb {
@@ -44,6 +49,8 @@ pub fn eq(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     }
     true
 }
+
+#[doc = "hidden"]
 pub fn ne(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     if lena != lenb {
         return true;
@@ -57,11 +64,13 @@ pub fn ne(lena: &usize, arra: &[u8], lenb: &usize, arrb: &[u8]) -> bool {
     false
 }
 
+#[doc = "hidden"]
 pub fn append_ch_unchecked(len: &mut usize, arr: &mut [u8], c: char) {
     arr[*len] = c as u8;
     *len += 1;
 } 
 
+#[doc = "hidden"]
 pub fn append_ch(len: &mut usize, arr: &mut [u8], c: char) -> Result<(), NotEnoughCapacity> {
     let total_len = *len + c.len_utf8();
     if total_len < arr.len() {
@@ -75,6 +84,7 @@ pub fn append_ch(len: &mut usize, arr: &mut [u8], c: char) -> Result<(), NotEnou
     }
 }
 
+#[doc = "hidden"]
 pub fn checksum(arr: &[u8]) -> usize {
     let mut result = 0;
     for i in arr.iter() {
