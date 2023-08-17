@@ -5,6 +5,10 @@ Our links:
     - [Github] (https://github.com/purplebutt/rust-cbfr)
     - [Documentation] (https://docs.rs/cbfr/0.1.1/cbfr/core/cb/struct.BFRDYN.html)
 
+What's new in version 0.1.2..?
+    - Code have been restructured, now it's much simpler and easy to import
+    - Helper functions are now excluded from prelude
+    - Some method and function are now const
 
 ## Quick start:
 

@@ -1,9 +1,9 @@
 [package]
 name = "cbfr"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 author = "Cheries Mewengkang"
-description = "A buffer that run on memory stack, focusing on performance and speed"
+description = "A buffer that run on stack, focusing on performance and speed"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/purplebutt/rust-cbfr"
