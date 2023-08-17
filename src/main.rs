@@ -1,26 +1,24 @@
-pub mod core;
-//pub mod helper;
+use cbfr::prelude::BFRDYN;
 
-// use crate::core::b125::B125;
-use crate::core::cb::BFRDYN;
-
-
+// quick start
 fn main() {
-    let mut b:BFRDYN = "this is just a test".into();
+    let mut b1:BFRDYN = "I love ..".into();
 
-    let mut b2: BFRDYN<125> = BFRDYN::new();
+    b1.reverse();
+    let v = b1.to_vec(' ');
 
-    b2.append_str("text").unwrap(); 
-    println!("{}", b2);
-
-    b.reverse();
-
-    let v = b.to_vec(' ');
-
-    println!("{}", b);
+    println!("{}", b1);
     println!("{:?}", v);
 
-    let mut c:BFRDYN = "cdba".into();
-    c.sort();
-    println!("{}", c);
+    let mut b2: BFRDYN<512> = BFRDYN::new();
+    b2.append_str("coding!").unwrap(); 
+    println!("{}", b2);
+
+    let mut b3:BFRDYN = "cbr".into();
+    let b4:BFRDYN = "eda".into();
+    b3.append(b4).unwrap();
+
+    b3.sort(); 
+    println!("{}", b3);
 }
+
