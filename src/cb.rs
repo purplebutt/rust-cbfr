@@ -42,6 +42,7 @@ pub const DEFCAPACITY: usize = 256;
 /// assert_eq!(b2.to_string(), "another string");
 /// assert_eq!(b3.to_string(), "more string");
 /// ```
+#[derive(Debug)]
 pub struct BFRDYN<const CAPACITY: usize = DEFCAPACITY> {
     arr: [u8; CAPACITY],
     len: usize
@@ -55,14 +56,18 @@ impl<const CAPACITY: usize> Display for BFRDYN<CAPACITY> {
 }
 
 /// Create buffer instance from &str
-/// # example
+/// # Example
 /// ```
 /// use cbfr::cb::BFRDYN;
 ///
 /// let b: BFRDYN<256> = "some string".into();
 /// ```
-/// # panic
+/// # Panic
 /// Panic if "some string" len > 256
+/// ```
+/// use cbfr::cb::BFRDYN;
+/// // let _b: BFRDYN<4> = "Hello".into(); // should panic
+/// ```
 ///
 impl<const CAPACITY: usize> From<&str> for BFRDYN<CAPACITY> {
     fn from(value: &str) -> Self {
@@ -221,22 +226,42 @@ impl<const CAPACITY: usize> Div for BFRDYN<CAPACITY> {
     }
 }
 
-// deref trait probably will expose self.arr to be able to access
-// publicly. So it's better to not implement Deref trait
-// impl<const CAPACITY: usize> Deref for BFRDYN<CAPACITY> {
-//     type Target = [u8; CAPACITY];
-//     fn deref(&self) -> &Self::Target {
-//         &self.arr
-//     } 
-// }
-
+impl<const CAPACITY: usize> AsRef<str> for BFRDYN<CAPACITY> {
+    /// return buffer as &str
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let b: BFRDYN<256> = "some string".into();
+    /// assert_eq!("some string", b.as_ref());
+    /// ```
+    fn as_ref(&self) -> &str {
+        unsafe {
+            std::str::from_utf8_unchecked(&self.arr[0..self.len])
+        } 
+    }
+}
 
 impl BFRDYN {
     ///
-    /// Create instance with default capacity (default capacity is 256)
+    /// Create buffer with default capacity (default capacity is 256)
     /// 
     pub const fn def() -> Self {
         Self { arr: [0u8; DEFCAPACITY], len: 0 }
+    }
+    ///
+    /// Create buffer with generic const capacity
+    /// # Example:
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let myb = BFRDYN::withcap::<64>();
+    /// let cap = myb.capacity();
+    /// assert_eq!(64, cap);
+    /// ```
+    pub fn withcap<const CAP: usize>() -> BFRDYN<CAP> {
+        BFRDYN {
+            arr: [0u8; CAP],
+            len: 0
+        }        
     }
 }
 
@@ -256,16 +281,162 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     pub const fn new() -> Self { Self { arr: [0u8; CAPACITY], len: 0 } }
 
     /// return buffer as &str
+    /// this function is deprecated, use [as_ref] instead
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
     /// let b: BFRDYN<256> = "some string".into();
     /// assert_eq!("some string", b.as_str());
     /// ```
+    #[deprecated]
     pub fn as_str(&self) -> &str {
         unsafe {
             std::str::from_utf8_unchecked(&self.arr[0..self.len])
         }
+    }
+
+    /// return buffer as array of bytes
+    /// # example
+    /// ```
+    /// use cbfr::BFRDYN;
+    /// let b: BFRDYN<256> = "abc".into();
+    /// let mut iter = b.as_bytes().into_iter();
+    ///
+    /// assert_eq!(b'a', iter.next().unwrap());
+    /// assert_eq!(b'b', iter.next().unwrap());
+    /// assert_eq!(b'c', iter.next().unwrap());
+    /// ```
+    pub const fn as_bytes(&self) -> [u8; CAPACITY] {
+        self.arr
+    }
+
+    /// This function return &mut of internal array that
+    /// you can use to directly modify the internal array.
+    /// warning: modify the internal array directly is dangerous!. 
+    /// See the example below to find out why.
+    /// ## Here some safe methods you may interested to.
+    /// - If you want just a copy of the internal array then use [as_bytes]
+    /// - If you want the internal array and no longer need for
+    /// the buffer, then use [take_inner]
+    /// # Example1 (this is Ok)
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe { b.bytes_mut() };
+    /// mr[0] = 'Z' as u8;
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Zello", b.as_ref());
+    /// ```
+    /// # Example2 (this is NOT Ok)
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe { b.bytes_mut() };
+    /// mr[5] = b'!';   // we expect buffer to be "Hello!"
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Hello", b.as_ref());
+    /// ```
+    /// # Example3 (this is Ok)
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe { b.bytes_mut() };
+    /// mr[5] = b'!';   // we expect buffer to be "Hello!"
+    /// unsafe { b.increase_len(1); }   // manually sync buffer len
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Hello!", b.as_ref());
+    /// ```
+    pub unsafe fn bytes_mut(&mut self) -> &mut[u8; CAPACITY] {
+        &mut self.arr
+    }
+
+    /// Take the inner array and destroy the buffer
+    /// Just after this function have called, buffer will be dropped
+    /// # Example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let b: BFRDYN = "Hi".into();
+    /// let inner = b.take_inner();
+    /// let mut array = [0; 256];
+    /// array[0] = b'H';
+    /// array[1] = b'i';
+    /// assert_eq!(array, inner);
+    /// ```
+    pub fn take_inner(self) -> [u8; CAPACITY] {
+        self.arr
+    }
+
+    /// Automatically update buffer len
+    /// This function will automatically sync len appropriately
+    /// This code takes O(n) time complexity which is
+    /// slower in comparing to increase_len and decrease_len method.
+    /// If you know exactly the correct len, consider using
+    /// increase_len or decrease_len. This method should be
+    /// use only in case where you do not have information
+    /// of the correct len of the buffer.
+    /// # Example
+    /// ```
+    /// use cbfr::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe {b.bytes_mut()};
+    /// mr[5] = b'!';   // we expect buffer to be "Hello!"
+    /// b.auto_len();   // manually sync buffer len
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Hello!", b.as_ref());
+    /// assert_eq!(6, b.len());
+    /// ```
+    pub fn auto_len(&mut self) {
+        let mut newlen = 0;
+        for i in self.arr.iter() {
+            if *i != 0u8 { newlen += 1 }
+            else { break; }
+        }
+        self.len = newlen;
+    }
+
+    /// Manually increase buffer len
+    /// warning: manually modify buffer len is dangerous!. 
+    /// # Example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe { b.bytes_mut() };
+    /// mr[5] = b'!';   // we expect buffer to be "Hello!"
+    /// unsafe { b.increase_len(1); }   // manually sync buffer len
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Hello!", b.as_ref());
+    /// ```
+    pub unsafe fn increase_len(&mut self, by: usize) {
+        self.len += by 
+    }
+
+    /// Manually decrease buffer len
+    /// warning: manually modify buffer len is dangerous!. 
+    /// # Example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let mut b: BFRDYN = "Hello".into();
+    /// println!("Before mutate: {b}");
+    ///
+    /// let mr = unsafe { b.bytes_mut() };
+    /// mr[3] = b'o';   // we expect buffer to be "Heloo"
+    /// mr[4] = 0;      // we expect buffer to be "Helo"
+    /// unsafe { b.decrease_len(1); }   // manually sync buffer len
+    /// println!("After mutate: {b}");
+    /// assert_eq!("Helo", b.as_ref());
+    /// ```
+    pub unsafe fn decrease_len(&mut self, by: usize) {
+        self.len -= by 
     }
 
     /// get buffer capacity
@@ -370,11 +541,13 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     }
 
     /// prepend buffer self with other without any error checking
-    /// offer performance boost (no error checking logic) but with a risk
-    /// after prepend, buffer self will contain buffer other old value +
+    /// offer performance boost (no error checking logic) but with a risk.
+    /// After prepend, buffer self will contain buffer other old value +
     /// buffer self old value and buffer other will contain old
     /// buffer self value
-    /// # example
+    /// This function may panic if you prepend value with len
+    /// larger than buffer capacity.
+    /// # Example
     /// ```
     /// use cbfr::cb::BFRDYN;
     /// let mut a: BFRDYN<125> = "I love ".into();
@@ -383,15 +556,24 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// assert_eq!("I love ", a.to_string());
     /// assert_eq!("Banana", b.to_string());
     ///
-    /// b.prepend_unchecked(&mut a);
+    /// unsafe {b.prepend_unchecked(&mut a);}
     ///
     /// assert_eq!("Banana", a.to_string());
     /// assert_eq!("I love Banana", b.to_string());
     /// assert_eq!(6, a.len());
     /// assert_eq!(13, b.len());
     /// ```
-    ///
-    pub fn prepend_unchecked(&mut self, other: &mut Self) {
+    /// # Panic
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// // create a small buffer with capacity of 4;
+    /// let mut very_small: BFRDYN<4> = "Rust".into();
+    /// let mut other: BFRDYN<4> = "y!".into();
+    /// // unsafe {very_small.prepend_unchecked(&mut other);} // should panic
+    /// // note: if you change the capacity of buffer to 6 
+    /// // or greater the code above will not panic
+    /// ```
+    pub unsafe fn prepend_unchecked(&mut self, other: &mut Self) {
         mem::swap(&mut self.arr, &mut other.arr);
         for i in 0..self.len {
             self.arr[other.len+i] = other.arr[i]
@@ -426,7 +608,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     pub fn prepend(&mut self, mut other: Self) -> NecResult {
         let total_len = self.len + other.len;
         if total_len <= self.capacity() {
-            self.prepend_unchecked(&mut other);
+            unsafe {self.prepend_unchecked(&mut other);}
             Ok(())
         } else {
             Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
@@ -450,7 +632,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         let total_len = self.len + text.len();
         if total_len <= self.capacity() {
             let mut other: Self = text.into();
-            self.prepend_unchecked(&mut other);
+            unsafe {self.prepend_unchecked(&mut other);}
             Ok(())
         } else {
             Err(err::NotEnoughCapacity::throw(self.capacity(), total_len))
@@ -778,7 +960,6 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// ```
     ///
     pub fn lower(&mut self) {
-        // TODO: looping only from 0 to self. len
         for (i, c) in self.arr.iter_mut().enumerate() {
             if i > (self.len-1) { break; }
             if *c <= 90 && *c >= 65 {
@@ -805,7 +986,6 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// ```
     ///
     pub fn upper(&mut self) {
-        // TODO: looping only from 0 to self. len
         for (i, c) in self.arr.iter_mut().enumerate() {
             if i > (self.len-1) { break; }
             if *c >= 97 && *c <= 122 {
@@ -863,21 +1043,31 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     }
 
     /// get slice without checking if 'start' and 'end' is a valid index
-    /// this function may return unexpected result if the start or
-    /// end value lies beyond valid index
-    /// # example
+    /// this function may return unexpected result if 
+    /// the start or end value lies beyond valid index
+    /// # Example
     /// ```
     /// use cbfr::cb::BFRDYN;
     ///
     /// let b: BFRDYN<256> = "I love you so much".into();
-    /// let partial = b.get_slice_unchecked(2,6);
-    /// assert_eq!('l', partial[0] as char);
-    /// assert_eq!('o', partial[1] as char);
-    /// assert_eq!('v', partial[2] as char);
-    /// assert_eq!('e', partial[3] as char);
+    /// unsafe {
+    ///     let partial = b.get_slice_unchecked(2,6);
+    ///     assert_eq!('l', partial[0] as char);
+    ///     assert_eq!('o', partial[1] as char);
+    ///     assert_eq!('v', partial[2] as char);
+    ///     assert_eq!('e', partial[3] as char);
+    /// }
     /// ```
+    /// # Panic
+    /// ```
+    /// use cbfr::cb::BFRDYN;
     ///
-    pub fn get_slice_unchecked(&self, start: usize, end: usize) -> &[u8] {
+    /// let b: BFRDYN<32> = "texting while coding is unsafe".into();
+    /// unsafe {
+    ///     // let partial = b.get_slice_unchecked(20, 50); // should panic
+    /// }
+    /// ```
+    pub unsafe fn get_slice_unchecked(&self, start: usize, end: usize) -> &[u8] {
         &self.arr[start..end]
     }
 
@@ -902,7 +1092,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         }
     }
 
-    /// split by char and return Vec<String>, include char criteria to next item
+    /// split by char and return `Vec<String>`, include char criteria to next item
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -934,7 +1124,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         v
     }
 
-    /// split by char and return Vec<String>, include char criteria to current item
+    /// split by char and return `Vec<String>`, include char criteria to current item
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -966,7 +1156,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         v
     }
 
-    /// split by char and return Vec<String>, exclude the char criteria
+    /// split by char and return `Vec<String>`, exclude the char criteria
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -998,7 +1188,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         v
     }
 
-    /// split by &str and return Vec<String>
+    /// split by &str and return `Vec<String>`
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -1061,7 +1251,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         v
     }
 
-    /// split by &str (plus left right char) and return Vec<String>
+    /// split by &str (plus left right char) and return `Vec<String>`
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;

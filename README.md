@@ -1,18 +1,19 @@
-# rust-cbfr
+# cbfr
 **A fast simple buffer running on stack, built on top of rust primitive array
 
-Our links:
-    - [Github] (https://github.com/purplebutt/rust-cbfr)
-    - [Documentation] (https://docs.rs/cbfr/0.1.1/cbfr/core/cb/struct.BFRDYN.html)
+Our links: 
+- [Github] (https://github.com/purplebutt/rust-cbfr) 
+- [Documentation] (https://docs.rs/cbfr/0.1.1/cbfr/core/cb/struct.BFRDYN.html)
 
 What's new in version 0.1.2..?
-    - Code have been restructured, now it's much simpler and easy to import
-    - Helper functions are now excluded from prelude
-    - Some method and function are now const
+- Code have been restructured, now it's much simpler and easy to import
+- Helper functions are now excluded from prelude
+- Some method and function are now const
 
 ## Quick start:
 
-```
+```rust
+
 use cbfr::prelude::BFRDYN;
 
 
@@ -36,4 +37,9 @@ fn main() {
     b3.sort(); 
     println!("{}", b3);
 }
+
 ```
+
+## Feedback:
+If you have any suggestions, issues, feedback, or anything..?
+[Send issues or feedback](https://github.com/purplebutt/rust-cbfr/issues)
