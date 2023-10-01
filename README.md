@@ -3,7 +3,16 @@
 
 Our links: 
 - [Github] (https://github.com/purplebutt/rust-cbfr) 
-- [Documentation] (https://docs.rs/cbfr/0.1.1/cbfr/core/cb/struct.BFRDYN.html)
+
+What's new in version 0.1.4..?
+- BFRDYN now implement AsRef<[u8]>
+- BFRDYN now implement std::borrow::Borrow<[u8]>
+- BFRDYN now implement std::borrow::BorrowMut<[u8]>
+- BFRDYN now implement std::ops::Deref
+
+What's new in version 0.1.3..?
+- Documentation fixed
+- New function auto_len(), increase_len(), decrease_len()
 
 What's new in version 0.1.2..?
 - Code have been restructured, now it's much simpler and easy to import

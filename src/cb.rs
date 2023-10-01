@@ -1,6 +1,9 @@
-use std::mem;
+use std::borrow::Borrow;
+use std::borrow::BorrowMut;
 use std::fmt::Display;
 use std::ops::{Add, Sub, Mul, Div};
+use std::mem;
+
 
 use crate::helper as helper;
 use crate::errors as err;
@@ -80,7 +83,7 @@ impl<const CAPACITY: usize> From<&str> for BFRDYN<CAPACITY> {
 /// Create buffer instance from &str
 /// # example
 /// ```
-/// use cbfr::cb::BFRDYN;
+/// use cbfr::BFRDYN;
 /// let a: BFRDYN<125> = "wow amazing".into();
 /// let partial = a.get_slice(0, 3).unwrap();
 /// let mut b: BFRDYN<125> = partial.into();
@@ -99,6 +102,26 @@ impl<const CAPACITY: usize> From<&[u8]> for BFRDYN<CAPACITY> {
         me
     }
 }
+
+// NOTE: Review this code
+// impl<const CAPACITY: usize> TryFrom<&String> for BFRDYN<CAPACITY> {
+//     type Error = String;
+//     fn try_from(value: &String) -> Result<Self, Self::Error> {
+//         match CAPACITY.cmp(&value.len()) {
+//             std::cmp::Ordering::Less => {
+//                 let errmsg = format!("Not enough capacity. Buffer size is {} but try to store {}", CAPACITY, value.len());
+//                 Err(errmsg)
+//             },
+//             _ => {
+//                 let mut arr = [0u8; CAPACITY];
+//                 for (i, v) in value.bytes().enumerate() {
+//                     arr[i] = v
+//                 }
+//                 Ok(Self { arr, len: value.len() })
+//             }
+//         }
+//     }
+// }
 
 /// clone trait
 impl<const CAPACITY: usize> Clone for BFRDYN<CAPACITY> {
@@ -232,13 +255,58 @@ impl<const CAPACITY: usize> AsRef<str> for BFRDYN<CAPACITY> {
     /// ```
     /// use cbfr::cb::BFRDYN;
     /// let b: BFRDYN<256> = "some string".into();
-    /// assert_eq!("some string", b.as_ref());
+    /// assert_eq!("some string", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     fn as_ref(&self) -> &str {
         unsafe {
             std::str::from_utf8_unchecked(&self.arr[0..self.len])
         } 
     }
+}
+
+impl<const CAPACITY: usize> AsRef<[u8]> for BFRDYN<CAPACITY> {
+    /// return buffer as &[u8]
+    /// # example
+    /// ```
+    /// use cbfr::BFRDYN;
+    /// let b: BFRDYN<256> = "some string".into();
+    /// let refslice = <BFRDYN as AsRef<[u8]>>::as_ref(&b);
+    /// assert_eq!(b's', refslice[0]);
+    /// assert_eq!(b' ', refslice[4]);
+    /// assert_eq!(b't', refslice[6]);
+    /// assert_eq!(11, refslice.len());
+    /// ```
+    fn as_ref(&self) -> &[u8] {
+        &self.arr[0..self.len]
+    }
+    
+}
+
+impl<const CAPACITY: usize> Borrow<[u8]> for BFRDYN<CAPACITY> {
+    fn borrow(&self) -> &[u8] {
+        self.as_ref()
+    }
+}
+
+impl<const CAPACITY: usize> BorrowMut<[u8]> for BFRDYN<CAPACITY> {
+    fn borrow_mut(&mut self) -> &mut [u8] {
+        &mut self.arr
+    }
+}
+
+impl<const CAPACITY: usize> std::ops::Deref for BFRDYN<CAPACITY> {
+    type Target = [u8];
+    ///
+    /// use cbfr::BFRDYN;
+    /// let b = "some string".into();
+    /// let slice = *b;
+    /// assert_eq!(slice[0], 's');
+    /// assert_eq!(slice[3], 'e');
+    /// assert_eq!(slice[10], 'g');
+    ///
+    fn deref(&self) -> &Self::Target {
+        self.as_ref() 
+    } 
 }
 
 impl BFRDYN {
@@ -327,7 +395,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// let mr = unsafe { b.bytes_mut() };
     /// mr[0] = 'Z' as u8;
     /// println!("After mutate: {b}");
-    /// assert_eq!("Zello", b.as_ref());
+    /// assert_eq!("Zello", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     /// # Example2 (this is NOT Ok)
     /// ```
@@ -338,7 +406,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// let mr = unsafe { b.bytes_mut() };
     /// mr[5] = b'!';   // we expect buffer to be "Hello!"
     /// println!("After mutate: {b}");
-    /// assert_eq!("Hello", b.as_ref());
+    /// assert_eq!("Hello", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     /// # Example3 (this is Ok)
     /// ```
@@ -350,7 +418,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// mr[5] = b'!';   // we expect buffer to be "Hello!"
     /// unsafe { b.increase_len(1); }   // manually sync buffer len
     /// println!("After mutate: {b}");
-    /// assert_eq!("Hello!", b.as_ref());
+    /// assert_eq!("Hello!", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     pub unsafe fn bytes_mut(&mut self) -> &mut[u8; CAPACITY] {
         &mut self.arr
@@ -390,7 +458,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// mr[5] = b'!';   // we expect buffer to be "Hello!"
     /// b.auto_len();   // manually sync buffer len
     /// println!("After mutate: {b}");
-    /// assert_eq!("Hello!", b.as_ref());
+    /// assert_eq!("Hello!", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// assert_eq!(6, b.len());
     /// ```
     pub fn auto_len(&mut self) {
@@ -414,7 +482,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// mr[5] = b'!';   // we expect buffer to be "Hello!"
     /// unsafe { b.increase_len(1); }   // manually sync buffer len
     /// println!("After mutate: {b}");
-    /// assert_eq!("Hello!", b.as_ref());
+    /// assert_eq!("Hello!", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     pub unsafe fn increase_len(&mut self, by: usize) {
         self.len += by 
@@ -433,7 +501,7 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     /// mr[4] = 0;      // we expect buffer to be "Helo"
     /// unsafe { b.decrease_len(1); }   // manually sync buffer len
     /// println!("After mutate: {b}");
-    /// assert_eq!("Helo", b.as_ref());
+    /// assert_eq!("Helo", <BFRDYN as AsRef<str>>::as_ref(&b));
     /// ```
     pub unsafe fn decrease_len(&mut self, by: usize) {
         self.len -= by 

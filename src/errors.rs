@@ -3,7 +3,7 @@ use std::error::Error;
 
 #[doc = "hidden"]
 #[derive(Debug, Default)]
-struct ErrorBase {
+pub struct ErrorBase {
     buffer: usize,
     value: usize,
     len: usize,
@@ -12,7 +12,7 @@ struct ErrorBase {
 
 #[doc = "hidden"]
 #[derive(Debug)]
-pub struct NotEnoughCapacity(ErrorBase);
+pub struct NotEnoughCapacity(pub ErrorBase);
 impl Error for NotEnoughCapacity {}
 impl Display for NotEnoughCapacity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -1,7 +1,7 @@
 use cbfr::prelude::BFRDYN;
 
 
-fn main () {
+fn demo1() {
     let mut b: BFRDYN = "Hello".into();
     println!("Before mutate: {b}");
 
@@ -14,16 +14,14 @@ fn main () {
     mr[5] = b'!';
     unsafe { b.increase_len(1); }
     println!("After mutate: {b}");
-    assert_eq!("Hello!", b.as_ref());
+    assert_eq!("Hello!", <BFRDYN as AsRef<str>>::as_ref(&b));
 
     let myb = BFRDYN::withcap::<64>();
     let l = myb.capacity();
     println!("{l}");
 }
 
-// quick start
-#[allow(unused)]
-fn main1() {
+fn demo2() {
     let mut b1:BFRDYN = "I love ..".into();
 
     b1.reverse();
@@ -55,5 +53,22 @@ fn main1() {
     println!("myb: {myb}");
     println!("by: {by:?}");
     println!("myb: {myb:?}");
+}
+
+
+use std::fs::write;
+
+fn write_with_cbfr() {
+    let sometext = "Hello world!";
+    let buffer: BFRDYN = sometext.into();
+    let path = std::path::Path::new("./sample.txt");
+
+    write(path, buffer).ok();
+}
+
+fn main() {
+    demo1();
+    demo2();
+    write_with_cbfr();
 }
 

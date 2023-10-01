@@ -1,6 +1,6 @@
 [package]
 name = "cbfr"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 author = "Cheries Mewengkang"
 description = "A buffer that run on stack, focusing on performance and speed"
