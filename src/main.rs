@@ -5,6 +5,13 @@ fn demo1() {
     let mut b: BFRDYN = "Hello".into();
     println!("Before mutate: {b}");
 
+    let containll = b.contain_str("el"); println!("Contain el: {}", containll);
+    let containll = b.contain_str("l"); println!("Contain l: {}", containll);
+    let containll = b.contain_str("Hel"); println!("Contain Hel: {}", containll);
+    let containll = b.contain_str("ll"); println!("Contain ll: {}", containll);
+    let containll = b.contain_str("lo"); println!("Contain lo: {}", containll);
+    let containll = b.contain_str("Amazzing"); println!("Contain amazzing: {}", containll);
+
     // let mr = unsafe { b.bytes_mut() };
     // mr[0] = 'Z' as u8;
     // println!("After mutate: {b}");

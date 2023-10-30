@@ -8,4 +8,3 @@ pub use super::errors:: {
     InvalidIndex,
     NotEnoughCapacity
 };
-

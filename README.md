@@ -4,6 +4,15 @@
 Our links: 
 - [Github] (https://github.com/purplebutt/rust-cbfr) 
 
+What's new in version 0.1.5
+- BFRDYN now implement Hash, you can now use it as key for HashMap (or HashSet) 
+- new function "contain_str", "split", "split_incl", "split_incl_left"
+- new function "split2", "split2_incl", "split2_incl_left"
+- new function "starts_with", "ends_with", "pop", "popn", "take_head"
+
+"as_str" is replaceable by "as_ref()" but in some situation, "as_str" is
+very handy and can simplify our code, so we bring it back, it's no longer deprecated.
+
 What's new in version 0.1.4..?
 - BFRDYN now implement AsRef<[u8]>
 - BFRDYN now implement std::borrow::Borrow<[u8]>

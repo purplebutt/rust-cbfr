@@ -8,10 +8,10 @@
 //! to provide a const generic to define buffer size, by default
 //! the buffer size is 256. BFRDYN store data on the stack, so
 //! becarefull that you didn't provide too large size that
-//! will make your stack overflow.
+//! will make your stack overflow (since stack has limited memory).
 //! # quick start
 //! ```
-//! use cbfr::cb::BFRDYN;
+//! use cbfr::BFRDYN;
 //!
 //! let b1 = BFRDYN::<125>::from("some string");    // create a buffer with capacity = 125
 //! let b2: BFRDYN = "another string".into();       // create a buffer with default capacity (256)

@@ -45,7 +45,7 @@ pub const DEFCAPACITY: usize = 256;
 /// assert_eq!(b2.to_string(), "another string");
 /// assert_eq!(b3.to_string(), "more string");
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub struct BFRDYN<const CAPACITY: usize = DEFCAPACITY> {
     arr: [u8; CAPACITY],
     len: usize
@@ -349,14 +349,14 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     pub const fn new() -> Self { Self { arr: [0u8; CAPACITY], len: 0 } }
 
     /// return buffer as &str
-    /// this function is deprecated, use [as_ref] instead
+    /// this function was deprecated on the previous version, but actually this
+    /// function is very handy on some specific situation so we bring back this function
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
     /// let b: BFRDYN<256> = "some string".into();
     /// assert_eq!("some string", b.as_str());
     /// ```
-    #[deprecated]
     pub fn as_str(&self) -> &str {
         unsafe {
             std::str::from_utf8_unchecked(&self.arr[0..self.len])
@@ -551,6 +551,40 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
             i += 1;
         }
         result
+    }
+
+    /// Check if buffer contain criteria, return true if yes otherwise return false.
+    /// This function time complexity is O(n) 
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    /// let buf: BFRDYN<125> = "Admin123".into();
+    ///
+    /// assert!(buf.contain_str("A"));
+    /// assert!(buf.contain_str("Ad"));
+    /// assert!(buf.contain_str("dmi"));
+    /// assert!(buf.contain_str("dmin"));
+    /// assert!(buf.contain_str("in"));
+    /// assert!(buf.contain_str("n"));
+    /// assert!(buf.contain_str("123"));
+    /// assert_eq!(false, buf.contain_str("x"));
+    /// ```
+    ///
+    pub const fn contain_str(&self, criteria: &str) -> bool {
+        let mut i = 0;
+        let criteria = criteria.as_bytes();
+        if criteria.len() > self.len { return false; }
+        while i < (1 + self.len - criteria.len()) {
+            let mut j = 0;
+            let mut current = criteria[j];
+            while current == self.arr[i+j] {
+                j += 1;
+                if j >= criteria.len() { return true; }
+                current = criteria[j];
+            }
+            i += 1;
+        }
+        false
     }
 
     /// get the last value as byte inside a buffer
@@ -1349,6 +1383,266 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         let bfr: BFRDYN<CAPACITY> = last.into();
         v.push(bfr.to_string());
         v
+    }
+
+    //=============NEW===============
+    /// split by &char (exclude the criteria) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user332@email.com".into();
+    /// let (username, email_provider) = b.split('@').unwrap();
+    ///
+    /// assert_eq!("user332", username.as_str());
+    /// assert_eq!("email.com", email_provider.as_str());
+    /// ```
+    ///
+    pub fn split(self, criteria: char) -> Option<(Self, Self)> {
+        for (i, c) in self.arr.iter().enumerate() {
+            if *c as char == criteria {
+                let left: Self = self.arr[0..i].into();
+                let right: Self = self.arr[i+1..self.len].into();
+                return Some((left, right));
+            }
+        }
+        None
+    }
+    /// split by &char (include the criteria) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user332@email.com".into();
+    /// let (username, email_provider) = b.split_incl('@').unwrap();
+    ///
+    /// assert_eq!("user332", username.as_str());
+    /// assert_eq!("@email.com", email_provider.as_str());
+    /// ```
+    ///
+    pub fn split_incl(self, criteria: char) -> Option<(Self, Self)> {
+        for (i, c) in self.arr.iter().enumerate() {
+            if *c as char == criteria {
+                let left: Self = self.arr[0..i].into();
+                let right: Self = self.arr[i..self.len].into();
+                return Some((left, right));
+            }
+        }
+        None
+    }
+    /// split by &char (include the criteria to the left) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user332@email.com".into();
+    /// let (username, email_provider) = b.split_incl_left('@').unwrap();
+    ///
+    /// assert_eq!("user332@", username.as_str());
+    /// assert_eq!("email.com", email_provider.as_str());
+    /// ```
+    ///
+    pub fn split_incl_left(self, criteria: char) -> Option<(Self, Self)> {
+        for (i, c) in self.arr.iter().enumerate() {
+            if *c as char == criteria {
+                let left: Self = self.arr[0..i+1].into();
+                let right: Self = self.arr[i+1..self.len].into();
+                return Some((left, right));
+            }
+        }
+        None
+    }
+    /// split by &str (exclude the criteria) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user123//hello world//message".into();
+    /// let (left, right) = b.split2("//").unwrap();
+    ///
+    /// assert_eq!("user123", left.as_str());
+    /// assert_eq!("hello world//message", right.as_str());
+    /// ```
+    ///
+    pub fn split2(self, criteria: &str) -> Option<(Self, Self)> {
+        for (i, _) in self.arr.iter().enumerate() {
+            if i + criteria.len() > self.len { break; }
+            if self.arr[i..i+criteria.len()] == criteria.as_bytes()[..] {
+                let left = &self.arr[0..i];
+                let right = &self.arr[i+criteria.len()..self.len];
+                let lf: Self = left.into();
+                let rg: Self = right.into();
+                return Some((lf, rg))
+            }
+        }
+        None
+    }
+    /// split by &str (include the criteria) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user123//hello world//message".into();
+    /// let (left, right) = b.split2_incl("//").unwrap();
+    ///
+    /// assert_eq!("user123", left.as_str());
+    /// assert_eq!("//hello world//message", right.as_str());
+    /// ```
+    ///
+    pub fn split2_incl(self, criteria: &str) -> Option<(Self, Self)> {
+        for (i, _) in self.arr.iter().enumerate() {
+            if i + criteria.len() > self.len { break; }
+            if self.arr[i..i+criteria.len()] == criteria.as_bytes()[..] {
+                let left = &self.arr[0..i];
+                let right = &self.arr[i..self.len];
+                let lf: Self = left.into();
+                let rg: Self = right.into();
+                return Some((lf, rg))
+            }
+        }
+        None
+    }
+    /// split by &str (include the criteria to the left) and return Option<(Self, Self)>
+    /// or return None if the criteria didn't match
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "user123//hello world//message".into();
+    /// let (left, right) = b.split2_incl_left("//").unwrap();
+    ///
+    /// assert_eq!("user123//", left.as_str());
+    /// assert_eq!("hello world//message", right.as_str());
+    /// ```
+    ///
+    pub fn split2_incl_left(self, criteria: &str) -> Option<(Self, Self)> {
+        for (i, _) in self.arr.iter().enumerate() {
+            if i + criteria.len() > self.len { break; }
+            if self.arr[i..i+criteria.len()] == criteria.as_bytes()[..] {
+                let left = &self.arr[0..i+criteria.len()];
+                let right = &self.arr[i+criteria.len()..self.len];
+                let lf: Self = left.into();
+                let rg: Self = right.into();
+                return Some((lf, rg))
+            }
+        }
+        None
+    }
+    /// evaluate if buffer starts_with with criteria 
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "some text".into();
+    /// let starts_with_som = b.starts_with("som");
+    ///
+    /// assert!(starts_with_som);
+    /// ```
+    ///
+    pub fn starts_with(&self, criteria: &str) -> bool {
+        &self.arr[0..criteria.len()] == criteria.as_bytes()
+    }
+    /// evaluate if buffer ends_with with criteria 
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let b: BFRDYN<256> = "some text".into();
+    /// let ends_with_ext = b.ends_with("ext");
+    ///
+    /// assert!(ends_with_ext);
+    /// ```
+    ///
+    pub fn ends_with(&self, criteria: &str) -> bool {
+        &self.arr[self.len()-criteria.len()..self.len()] == criteria.as_bytes()
+    }
+    /// pop the last char from buffer
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let mut b: BFRDYN<256> = "abcd".into();
+    /// let pop1 = b.pop().unwrap();
+    /// let pop2 = b.pop().unwrap();
+    /// let pop3 = b.pop().unwrap();
+    ///
+    /// assert_eq!('d', pop1);
+    /// assert_eq!('c', pop2);
+    /// assert_eq!('b', pop3);
+    /// assert_eq!("a", b.as_str());
+    /// ```
+    ///
+    pub fn pop(&mut self) -> Option<char> {
+        if self.len > 0 {
+            self.len -= 1;
+            let last = self.arr[self.len];
+            self.arr[self.len] = 0u8;
+            return Some(last as char);
+        }
+        None
+    }
+    /// pop n char of buffer
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let mut b: BFRDYN<256> = "abcd123DEFG".into();
+    /// let pop1 = b.popn(4).unwrap();
+    /// let pop2 = b.popn(3).unwrap();
+    /// let pop3 = b.popn(4).unwrap();
+    ///
+    /// assert_eq!("DEFG", pop1.as_str());
+    /// assert_eq!("123", pop2.as_str());
+    /// assert_eq!("abcd", pop3.as_str());
+    /// assert_eq!("", b.as_str());
+    /// ```
+    ///
+    pub fn popn(&mut self, n: usize) -> Option<Self> {
+        if self.len >= n {
+            self.len -= n; 
+            let popped: Self = self.arr[self.len..self.len+n].into();
+            let newlen = self.len;
+            self.arr[newlen..].fill(0u8);
+            return Some(popped);
+        }
+        None
+    }
+    /// take n char of buffer.
+    /// This function is similar to pop()
+    /// but take_head pop from the head instead
+    /// # example
+    /// ```
+    /// use cbfr::cb::BFRDYN;
+    ///
+    /// let mut b: BFRDYN<256> = "abcd123DEFG".into();
+    /// let pop1 = b.take_head(4).unwrap();
+    /// let pop2 = b.take_head(3).unwrap();
+    /// let pop3 = b.take_head(4).unwrap();
+    ///
+    /// assert_eq!("abcd", pop1.as_str());
+    /// assert_eq!("123", pop2.as_str());
+    /// assert_eq!("DEFG", pop3.as_str());
+    /// assert_eq!("", b.as_str());
+    /// ```
+    ///
+    pub fn take_head(&mut self, n: usize) -> Option<Self> {
+        if self.len >= n {
+            let popped: Self = self.arr[0..n].into();
+            // shift buffer
+            for _ in 0..n {
+                // safety:
+                // unwrap() will never throw an error
+                // because self.len >= n
+                self.lshift(0).unwrap();
+            }
+            return Some(popped);
+        }
+        None
     }
 }
 

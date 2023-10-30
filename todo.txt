@@ -1,0 +1,41 @@
+add functions:
+  #starts_with
+  -- ex.
+  ```rust
+    let buf: BFRDYN = "some text".into();
+
+    let result = buf.starts_with("som");
+    assert(result);
+  ```
+  #ends_with
+  -- ex.
+  ```rust
+    let buf: BFRDYN = "some text".into();
+
+    let result = buf.ends_with("ext");
+    assert(result);
+  ```
+  #pop
+  -- ex.
+  ```rust
+    let buf: BFRDYN = "some text".into();
+
+    let last = buf.pop();
+    assert('t', last);
+  ```
+  #popn
+  -- ex.
+  ```rust
+    let buf: BFRDYN = "some text".into();
+
+    let last = buf.popn(4);
+    assert("text", last);
+  ```
+  #poph - pop head
+  -- ex.
+  ```rust
+    let buf: BFRDYN = "some text".into();
+
+    let head = buf.poph(4);
+    assert("some", head);
+  ```
