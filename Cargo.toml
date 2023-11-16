@@ -1,10 +1,11 @@
 [package]
 name = "cbfr"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 author = "Cheries Mewengkang"
 description = "A buffer that run on stack, focusing on performance and speed"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/purplebutt/rust-cbfr"
+keywords = ["buffer", "text", "string", "bytes"]
 

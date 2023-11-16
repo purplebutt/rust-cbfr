@@ -4,6 +4,23 @@
 Our links: 
 - [Github] (https://github.com/purplebutt/rust-cbfr) 
 
+What's new in version 0.1.6
+- contain_str now is a const function
+- new function: contains, isort, isort_desc 
+- BFRDYN now implement From<&BFRDYN>, you can now convert buffer with different size.
+- # Warning: converting to smaller size has potency to truncate your data
+```rust
+use cbfr::cb::BFRDYN;
+
+let b256: BFRDYN<256> = "some string".into();
+
+let b512: BFRDYN<512> = (&b256).into();
+let b8: BFRDYN<8> = (&b256).into(); // will truncate "some string" to "some str"
+
+assert_eq!("some string", b512.as_str());
+assert_eq!("some str", b8.as_str());
+```
+
 What's new in version 0.1.5
 - BFRDYN now implement Hash, you can now use it as key for HashMap (or HashSet) 
 - new function "contain_str", "split", "split_incl", "split_incl_left"

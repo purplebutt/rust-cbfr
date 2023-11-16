@@ -13,25 +13,61 @@ pub fn fmt(len: &usize, arr: &[u8], f: &mut std::fmt::Formatter<'_>) -> std::fmt
 }
 
 /// helper function for From trait implementation
-#[doc = "hidden"]
-pub fn from(value: &str, arr: &mut [u8]) {
-    if value.len() <= arr.len() {
-        for (i, &v) in value.as_bytes().iter().enumerate() {
-            arr[i] = v
-        };
-    } else {
-        panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
-    }
-} 
+// #[doc = "hidden"]
+// pub fn from(value: &str, arr: &mut [u8]) {
+//     assert!(value.len() <= arr.len(), "Not enough capacity!");
+//     unsafe {
+//         std::ptr::copy(value.as_ptr(), arr.as_mut_ptr(), value.len());
+//     }
+//     //NOTE: old slow code
+//     // if value.len() <= arr.len() {
+//     //     for (i, &v) in value.as_bytes().iter().enumerate() {
+//     //         arr[i] = v
+//     //     };
+//     // } else {
+//     //     panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
+//     // }
+// } 
 
 #[doc = "hidden"]
 pub fn from_slice(value: &[u8], arr: &mut [u8]) {
+    assert!(value.len() <= arr.len(), "Not enough capacity!");
+    unsafe {
+        std::ptr::copy(value.as_ptr(), arr.as_mut_ptr(), value.len())
+    }
+    //NOTE: old code (slower code, takes O(n))
+    // if value.len() <= arr.len() {
+    //     for (i, &v) in value.iter().enumerate() {
+    //         arr[i] = v;
+    //     }
+    // } else {
+    //     panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
+    // }
+} 
+
+#[doc = "hidden"]
+pub fn from_slice2(value: &[u8], arr: &mut [u8]) -> usize {
+    // let mut len = 0;
     if value.len() <= arr.len() {
-        for (i, &v) in value.iter().enumerate() {
-            arr[i] = v;
+        // for (i, &v) in value.iter().enumerate() {
+        //     arr[i] = v;
+        //     len = i;
+        // }
+        // len + 1
+        unsafe {
+            std::ptr::copy(value.as_ptr(), arr.as_mut_ptr(), value.len());
+            value.len()
         }
     } else {
-        panic!("{}", NotEnoughCapacity::throw(arr.len(), value.len()));
+        unsafe {
+            std::ptr::copy(value.as_ptr(), arr.as_mut_ptr(), arr.len());
+            arr.len()
+        }
+        // for (i, v) in arr.iter_mut().enumerate() {
+        //     *v = value[i];
+        //     len = i
+        // }
+        // len + 1
     }
 } 
 

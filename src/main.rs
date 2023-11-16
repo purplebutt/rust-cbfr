@@ -1,6 +1,7 @@
 use cbfr::prelude::BFRDYN;
 
 
+#[allow(dead_code)]
 fn demo1() {
     let mut b: BFRDYN = "Hello".into();
     println!("Before mutate: {b}");
@@ -28,6 +29,7 @@ fn demo1() {
     println!("{l}");
 }
 
+#[allow(dead_code)]
 fn demo2() {
     let mut b1:BFRDYN = "I love ..".into();
 
@@ -65,7 +67,7 @@ fn demo2() {
 
 use std::fs::write;
 
-fn write_with_cbfr() {
+fn _write_with_cbfr() {
     let sometext = "Hello world!";
     let buffer: BFRDYN = sometext.into();
     let path = std::path::Path::new("./sample.txt");
@@ -73,9 +75,54 @@ fn write_with_cbfr() {
     write(path, buffer).ok();
 }
 
+const CAP: usize = 8500;
+
+fn sort_demo() -> u128 {
+    let mut data = vec![];
+    for _ in 0..CAP {
+        let buf: BFRDYN<32> = "ziA4xaij7M23sjK08u1)".into();
+        data.push(buf);
+    }
+    let d = std::time::Instant::now();
+    for i in data.iter_mut() { i.sort(); }
+    let etime = d.elapsed().as_millis();
+    println!("exec time[sort]: {etime} milliseconds");
+    let last = data.pop().unwrap();
+    println!("result: {}", last.as_str());
+    etime
+}
+
+fn isort_demo() -> u128 {
+    let mut data = vec![];
+    for _ in 0..CAP {
+        let buf: BFRDYN<32> = "ziA4xaij7M23sjK08u1)".into();
+        data.push(buf);
+    }
+    let d = std::time::Instant::now();
+    for i in data.iter_mut() { i.isort(); }
+    let etime = d.elapsed().as_millis();
+    println!("exec time[isort]: {etime} milliseconds");
+    let last = data.pop().unwrap();
+    println!("result: {}", last.as_str());
+    etime
+}
+
 fn main() {
-    demo1();
-    demo2();
-    write_with_cbfr();
+   //  let slice: &[u8] = "Admin123".as_bytes();
+   // 
+   //  let mut buf = BFRDYN::<256>::from_slice(slice);
+   //  buf.auto_len();
+   //  println!("{}", buf.len());
+   //  println!("{}", buf.as_str());
+   //  return;
+   //  
+   //  demo1();
+   //  demo2();
+   //  write_with_cbfr();
+
+    let sorttime = sort_demo();
+    let isorttime = isort_demo();
+    let dif = sorttime - isorttime;
+    println!("time diff: {} milliseconds", dif);
 }
 

@@ -1027,61 +1027,8 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
         }
     }
 
-    /// sort items in buffer using Isertion Sort Algorithm
-    /// this method takes O(n*log(n)) time complexity
-    /// this method takes O(1) space complexity
-    /// # example
-    /// ```
-    /// use cbfr::cb::BFRDYN;
-    /// let mut b: BFRDYN<256> = "cgahMb".into();
-    /// b.isort();
-    /// assert_eq!("Mabcgh", b.as_str());
-    /// assert_eq!(6, b.len());
-    /// ```
-    ///
-    pub fn isort(&mut self) {
-        for i in 1..self.len() {
-            let mut j; 
-            for x in 0..i {
-                j = i - x;
-                if self.arr[j] < self.arr[j-1] {
-                    let temp = self.arr[j];
-                    self.arr[j] = self.arr[j-1];
-                    self.arr[j-1] = temp;
-                } else { break; }
-            }
-        }
-    }
-
-    /// sort (descending) items in buffer using Isertion Sort Algorithm
-    /// this method takes O(n*log(n)) time complexity
-    /// this method takes O(1) space complexity
-    /// # example
-    /// ```
-    /// use cbfr::cb::BFRDYN;
-    /// let mut b: BFRDYN<256> = "cgahMb".into();
-    /// b.isort_desc();
-    /// assert_eq!("hgcbaM", b.as_str());
-    /// assert_eq!(6, b.len());
-    /// ```
-    ///
-    pub fn isort_desc(&mut self) {
-        for i in 1..self.len() {
-            let mut j; 
-            for x in 0..i {
-                j = i - x;
-                if self.arr[j] > self.arr[j-1] {
-                    let temp = self.arr[j];
-                    self.arr[j] = self.arr[j-1];
-                    self.arr[j-1] = temp;
-                } else { break; }
-            }
-        }
-    }
-
     /// sort items in buffer
     /// this method use linear sort algorithm with O(n * n) time complexity
-    /// this method takes O(1) space complexity
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -1107,8 +1054,6 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
     }
 
     /// sort items in buffer descending
-    /// this method use linear sort algorithm with O(n * n) time complexity
-    /// this method takes O(1) space complexity
     /// # example
     /// ```
     /// use cbfr::cb::BFRDYN;
@@ -1130,6 +1075,23 @@ impl<const CAPACITY: usize> BFRDYN<CAPACITY> {
                     sorted = false;
                 }
             }
+        }
+    }
+    
+    //NOTE: new function
+    pub fn rdxsort(&mut self) {
+        let a = self.arr;
+        let l = self.len();
+        for i in 0..l {
+            let mut b = Vec::with_capacity(u8::MAX as usize);
+            for x in 0..u8::MAX {
+                b.push([0u8; u8::MAX as usize]);
+            }
+            for (idx, item) in a.iter().enumerate() {
+                let num = (item / u8::MAX).pow(i as u32) % u8::MAX;
+                b[num as usize][idx] = *item;
+            }
+            self.arr = a;
         }
     }
 
